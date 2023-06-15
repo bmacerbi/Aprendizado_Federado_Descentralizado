@@ -4,7 +4,7 @@ import time
 import paho.mqtt.client as mqtt
 from sklearn.model_selection import train_test_split
 from keras.utils import to_categorical
-# from Controller import FedServer
+from Controller import FedServer
 # from FedClient import FedClient
 import sys
 import aux
@@ -94,13 +94,14 @@ class Client():
         else:
             self.startFedClient()
 
-    def startController(self, n_round_clients, max_rounds, acc_target):
+    def startController(self):
         print(f"Controller id: {self.id}")
-        # fed_server = FedServer()
-        # fed_server.startServer(n_round_clients, self.min_clients, max_rounds, acc_target)
+        fed_server = FedServer(n_round_clients, self.min_clients, max_rounds, acc_target, self.broker_adress)
+        fed_server.startServer()
 
     def startFedClient(self):
         print(f"FedClient id: {self.id}")
+
         # input_shape = (28, 28, 1)
         # num_classes = 10
 

@@ -1,8 +1,5 @@
 import aux
 import sys
-import grpc
-import fed_grpc_pb2_grpc
-import fed_grpc_pb2
 from sklearn.model_selection import train_test_split
 from keras.utils import to_categorical
 import os
@@ -10,7 +7,7 @@ import signal
 from concurrent import futures
 
 
-class FedClient(fed_grpc_pb2_grpc.FederatedServiceServicer):
+class FedClient():
     def __init__(self, cid, x_train, x_test, y_train, y_test, model, broker_adress):
         self.cid = cid
         self.x_train = x_train
