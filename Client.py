@@ -96,8 +96,8 @@ class Client():
 
     def startController(self):
         print(f"Controller id: {self.id}")
-        fed_server = FedServer(n_round_clients, self.min_clients, max_rounds, acc_target, self.broker_adress)
-        fed_server.startServer()
+        fed_server = FedServer(self.mqtt_client, n_round_clients, self.min_clients, max_rounds, acc_target, self.broker_adress)
+        fed_server.startServer(self.clients_list)
 
     def startFedClient(self):
         print(f"FedClient id: {self.id}")

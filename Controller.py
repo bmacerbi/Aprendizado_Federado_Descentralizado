@@ -5,9 +5,11 @@ import aux
 import time
 import sys
 import json
+import random
 
 class FedServer():
     def __init__(self, mqtt_client, n_round_clients, min_clients, max_rounds, acc_target, broker_adress):
+        self.mqtt_client = mqtt_client
         self.round = 0
         self.n_round_clients = n_round_clients
         self.min_clients = min_clients
@@ -18,7 +20,6 @@ class FedServer():
         self.weights_clients_list = []
         self.sample_size_list = []
         self.acc_list = []
-
         self.move_round = False
 
 
@@ -37,16 +38,13 @@ class FedServer():
             self.sample_size_list.append(data['sample'])
 
             if len(self.weights_clients_list) == self.n_round_clients:
-                global_weights = self.__FedAvg(self.n_round_clients, self.weights_clients_list, self.sample_size_list)
+                global_weights = self.__FedAvg()
 
-                ##publica aggregated_weights
+                ##publica global_weights
                 global_weights_msg = {
                     'global_weights': global_weights,
                 }   
                 self.mqtt_client.publish("sd/AggregationMsg", json.dumps(global_weights_msg))
-
-                self.sample_size_list = []
-                self.weights_clients_list = []
 
         elif topic == "sd/EvaluationMsg":
             self.acc_list.append(data['accuracy'])
@@ -59,18 +57,15 @@ class FedServer():
                     print("Accuracy Target has been achieved! Ending process")
                     self.mqtt_client.publish("sd/FinishMsg")
                     sys.exit()
+
+                self.__preperNewRound()        
                 
-                self.acc_list = []
-                self.round += 1
-                self.move_round = True
-
-    # Envia round atual para todos os clientes
-    def __sendRound(self):
-        for cid in self.clients:
-            channel = grpc.insecure_channel(self.clients[cid])
-            client = fed_grpc_pb2_grpc.FederatedServiceStub(channel)
-
-            client.sendRound(fed_grpc_pb2.currentRound(round = (self.round)))
+    def __preperNewRound(self):
+        self.round += 1
+        self.sample_size_list = []
+        self.weights_clients_list = []
+        self.acc_list = []
+        self.move_round = True
 
     # Inicia treinamento de determinado clientes
     def __callClientLearning(self, client_ip, q):
@@ -94,44 +89,19 @@ class FedServer():
         return acc_list
     
     # Calcula a média ponderada dos pesos resultantes do treino
-    def __FedAvg(self, n_clients, weights_clients_list, sample_size_list):
+    def __FedAvg(self):
         aggregated_weights = []
-        for j in range(len(weights_clients_list[0])):
+        for j in range(len(self.weights_clients_list[0])):
             element = 0.0
             sample_sum = 0.0
-            for i in range(n_clients):
-                sample_sum += sample_size_list[i]
-                element += weights_clients_list[i][j] * sample_size_list[i]
+            for i in range(self.n_round_clients):
+                sample_sum += self.sample_size_list[i]
+                element += self.weights_clients_list[i][j] * self.sample_size_list[i]
             aggregated_weights.append(element/sample_sum)  
         
         return aggregated_weights
     
-    # Encerra estado de wait_for_termination dos clients
-    def killClients(self):
-        for cid in self.clients:
-            channel = grpc.insecure_channel(self.clients[cid])
-
-            client = fed_grpc_pb2_grpc.FederatedServiceStub(channel)
-            client.killClient(fed_grpc_pb2.void())
-
-    def clientRegister(self, request, context):
-        ip = request.ip
-        port = request.port
-        cid = int(request.cid)
-
-        # Esperando disponibilidade de registro para novo client
-        while self.avalable_for_register == False:
-            continue
-
-        if cid in self.clients:
-            print(f"Could not register Client with ID {cid} - Duplicated Id")
-            return fed_grpc_pb2.registerOut(connectedClient = (False), round = (self.round))
-        
-        self.clients[cid] = ip + ":" + port
-        print(f"Client {cid} registered!")
-        return fed_grpc_pb2.registerOut(connectedClient = (True), round = (self.round))
-    
-    def startServer(self):
+    def startServer(self, clients_list):
         self.mqtt_client.on_message = self.on_message
         self.mqtt_client.on_connect = self.on_connect
 
@@ -140,6 +110,7 @@ class FedServer():
 
 
         while self.round < self.max_rounds:
+            choosem_clients = random.sample(clients_list, self.n_round_clients)
             ## gera lista de escolhidos
             # publica lista de clients esclhidos
 

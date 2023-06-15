@@ -64,6 +64,5 @@ def reshapeWeight(server_weight, client_weight):
 
     return reshape_weight
 
-def createRandomClientList(clients_dictionary, n_round_clients):
-    keys = list(clients_dictionary.keys())
-    return random.sample(keys, n_round_clients)
+def createRandomClientList(clients_list, n_round_clients):
+    return random.sample(clients_list, n_round_clients)
