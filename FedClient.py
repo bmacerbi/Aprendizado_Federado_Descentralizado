@@ -1,6 +1,7 @@
 import aux
 from concurrent import futures
 import json
+import numpy as np
 
 
 class FedClient():
@@ -14,6 +15,8 @@ class FedClient():
         self.model = model
         self.broker_adress = broker_adress
         self.mqtt_client = mqtt_client
+
+        self.global_weights_list = []
     
     def on_connect(self, client, userdata, flags, rc):
         print(f"FedClient conectado ao broker MQTT")
@@ -31,37 +34,48 @@ class FedClient():
             if self.cid in choose_clients:
                 self.startLearning()
         elif topic == "sd/AggregationMsg":
-            global_weights = data['global_weights']
-            self.modelValidation(global_weights)
+            self.global_weights_list.append(data['global_weights'])
+
+            if len(self.global_weights_list) == 1000:
+                global_weights = []
+                for weights_block in self.global_weights_list:
+                    for weight in weights_block:
+                        global_weights.append(weight)
+                self.modelValidation(global_weights)
+                self.global_weights_list = []
+
         elif topic == "sd/FinishMsg":
             print("Accuracy target has been achieved!")
 
     def startLearning(self):
-        print("Starting Learning")
+        print(f"Round {self.round}/Starting Learning")
         self.model.fit(self.x_train, self.y_train, epochs=1, verbose=2)
 
         weights_list = aux.setWeightSingleList(self.model.get_weights())
-        learning_results = {
-            'weights': weights_list,
-            'sample' : len(self.x_train)
-        }
-        print("publicou")
-        self.mqtt_client.publish("sd/RoundMsg", json.dumps(learning_results))
+        weights_sections = np.array_split(weights_list, 1000)
+        i = 0
+        for weight in weights_sections:
+            msg = {
+                'weights': weight.tolist(),
+                'sample' : len(self.x_train),
+                'cid' : self.cid,
+                'msgId': i
+            }
+            i +=1
+            self.mqtt_client.publish("sd/RoundMsg", json.dumps(msg))
 
 
     def modelValidation(self, global_weights):
-        print("Reshaping")
         self.model.set_weights(aux.reshapeWeight(global_weights, self.model.get_weights()))
         accuracy = self.model.evaluate(self.x_test, self.y_test, verbose=0)[1]
 
-        print(f"Local accuracy with global weights: {accuracy}")
+        print(f"Round {self.round}/Local accuracy with global weights: {accuracy}\n")
 
-        self.round += 1
-        
         accuracy_msg = {
             'accuracy': accuracy,
         }
         self.mqtt_client.publish("sd/EvaluationMsg", json.dumps(accuracy_msg))
+        self.round += 1
 
 
     def runClient(self, max_rounds):
