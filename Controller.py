@@ -24,7 +24,7 @@ class FedServer():
 
 
     def on_connect(self, client, userdata, flags, rc):
-        print(f"Client {self.id} conectado ao broker MQTT")
+        print(f"Controller conectado ao broker MQTT")
         self.mqtt_client.subscribe("sd/RoundMsg")
         self.mqtt_client.subscribe("sd/EvaluationMsg")
 
@@ -33,6 +33,7 @@ class FedServer():
         payload = msg.payload.decode("utf-8")
         data = json.loads(payload)
 
+        print(f"Recebe: {topic}")
         if topic == "sd/RoundMsg":
             self.weights_clients_list.append(data['weights'])
             self.sample_size_list.append(data['sample'])
@@ -67,7 +68,6 @@ class FedServer():
         self.acc_list = []
         self.move_round = True
     
-    # Calcula a média ponderada dos pesos resultantes do treino
     def __FedAvg(self):
         aggregated_weights = []
         for j in range(len(self.weights_clients_list[0])):
@@ -85,13 +85,13 @@ class FedServer():
         self.mqtt_client.on_connect = self.on_connect
 
         self.mqtt_client.connect(self.broker_adress)
-        self.mqtt_client.loop_start()
-
+        time.sleep(3)
         while self.round < self.max_rounds:
             choose_clients = random.sample(clients_list, self.n_round_clients)
             choose_clients_msg = {
                 'chooseIds': choose_clients
             }
+            print("Publica em sd/TrainingMsg")
             self.mqtt_client.publish("sd/TrainingMsg", json.dumps(choose_clients_msg))
 
             while self.move_round == False:

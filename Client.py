@@ -5,13 +5,13 @@ import paho.mqtt.client as mqtt
 from sklearn.model_selection import train_test_split
 from keras.utils import to_categorical
 from Controller import FedServer
-# from FedClient import FedClient
+from FedClient import FedClient
 import sys
 import aux
 
 class Client():
-    def __init__(self, broker_adress, min_clients):
-        self.id = random.randint(0, 65335)
+    def __init__(self, id, broker_adress, min_clients):
+        self.id = id
         self.min_clients = min_clients
         self.clients_list = []
         self.clients_list.append(self.id)
@@ -92,31 +92,33 @@ class Client():
         if self.id == self.controller_id:
             self.startController(n_round_clients, max_rounds, acc_target)
         else:
-            self.startFedClient()
+            self.startFedClient(max_rounds)
 
-    def startController(self):
-        print(f"Controller id: {self.id}")
-        fed_server = FedServer(self.mqtt_client, n_round_clients, self.min_clients, max_rounds, acc_target, self.broker_adress)
+    def startController(self, n_round_clients, max_rounds, acc_target):
+        fed_server = FedServer(self.mqtt_client, n_round_clients, 
+                                    self.min_clients, max_rounds, acc_target, 
+                                        self.broker_adress)
+        self.clients_list.remove(self.id)
         fed_server.startServer(self.clients_list)
 
-    def startFedClient(self):
-        print(f"FedClient id: {self.id}")
+    def startFedClient(self, max_rounds):
+        input_shape = (28, 28, 1)
+        num_classes = 10
 
-        # input_shape = (28, 28, 1)
-        # num_classes = 10
+        # Carregando e dividindo dataSet
+        x_train, y_train = aux.load_mnist_byCid(self.id)
+        x_train, x_test, y_train, y_test = train_test_split(x_train, y_train, test_size=0.2, random_state=42)
 
-        # # Carregando e dividindo dataSet
-        # x_train, y_train = aux.load_mnist_byCid(self.id)
-        # x_train, x_test, y_train, y_test = train_test_split(x_train, y_train, test_size=0.2, random_state=42)
+        # One-hot encode labels
+        y_train = to_categorical(y_train, num_classes)
+        y_test = to_categorical(y_test, num_classes)
 
-        # # One-hot encode labels
-        # y_train = to_categorical(y_train, num_classes)
-        # y_test = to_categorical(y_test, num_classes)
+        model = aux.define_model(input_shape,num_classes)
 
-        # model = aux.define_model(input_shape,num_classes)
-
-        # fed_client = FedClient(self.id, x_train, x_test, y_train, y_test, model, self.broker_adress)
-        # fed_client.runClient()
+        fed_client = FedClient(self.id, x_train, x_test, 
+                                y_train, y_test, model, self.broker_adress, 
+                                    self.mqtt_client)
+        fed_client.runClient(max_rounds)
 
 if __name__ == "__main__":
     try:
@@ -124,12 +126,13 @@ if __name__ == "__main__":
         min_clients = int(sys.argv[2])
         max_rounds = int(sys.argv[3])
         acc_target = float(sys.argv[4])
+        id = int(sys.argv[5])
 
     except IndexError:
-        print("Missing argument! You need to pass: (n_round_clients, min_clients, max_rounds, acc_target)")
+        print("Missing argument! You need to pass: n_round_clients/min_clients/max_rounds/acc_target/clientId")
         exit()
 
     broker_adress = "127.0.0.1"
-    client = Client(broker_adress=broker_adress, min_clients=min_clients)
+    client = Client(id= id, broker_adress=broker_adress, min_clients=min_clients)
     client.runClient(n_round_clients,max_rounds,acc_target)
 
