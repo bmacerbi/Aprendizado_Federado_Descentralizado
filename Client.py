@@ -132,7 +132,7 @@ if __name__ == "__main__":
         print("Missing argument! You need to pass: n_round_clients/min_clients/max_rounds/acc_target/clientId")
         exit()
 
-    broker_adress = "127.0.0.1"
+    broker_adress = "localhost"
     client = Client(id= id, broker_adress=broker_adress, min_clients=min_clients)
     client.runClient(n_round_clients,max_rounds,acc_target)
 

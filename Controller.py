@@ -1,9 +1,4 @@
-import threading
-from concurrent import futures
-import queue
-import aux
 import time
-import sys
 import json
 import random
 import numpy as np
@@ -73,12 +68,12 @@ class FedServer():
 
             if len(self.acc_list) == self.min_clients - 1:
                 acc_global = sum(self.acc_list)/len(self.acc_list)
-                print(f"Round: {self.round} / Accuracy Mean: {acc_global}")
+                print(f"Round: {self.round} / Accuracy Mean: {acc_global}\n")
 
                 if acc_global >= self.acc_target:
                     print("Accuracy Target has been achieved! Ending process")
-                    self.mqtt_client.publish("sd/FinishMsg")
-                    sys.exit()
+                    self.mqtt_client.publish("sd/FinishMsg", json.dumps({}))
+                    self.round = self.max_rounds
 
                 self.__preperNewRound()        
                 
@@ -103,6 +98,7 @@ class FedServer():
         return aggregated_weights
     
     def startServer(self, clients_list):
+        print("\n----------------------------------------------------------\n")
         self.mqtt_client.on_message = self.on_message
         self.mqtt_client.on_connect = self.on_connect
 
@@ -113,7 +109,7 @@ class FedServer():
             choose_clients_msg = {
                 'chooseIds': choose_clients
             }
-            print("Publica em sd/TrainingMsg")
+            print(f"Round: {self.round} / Call Training")
             self.mqtt_client.publish("sd/TrainingMsg", json.dumps(choose_clients_msg))
 
             while self.move_round == False:
