@@ -1,6 +1,6 @@
 import aux
-from concurrent import futures
 import json
+import sys
 
 
 class FedClient():
@@ -35,9 +35,10 @@ class FedClient():
             self.modelValidation(global_weights)
         elif topic == "sd/FinishMsg":
             print("Accuracy target has been achieved!")
+            self.round = sys.maxsize
 
     def startLearning(self):
-        print("Starting Learning")
+        print(f"Round: {self.round} / Start Learning")
         self.model.fit(self.x_train, self.y_train, epochs=1, verbose=2)
 
         weights_list = aux.setWeightSingleList(self.model.get_weights())
@@ -45,16 +46,14 @@ class FedClient():
             'weights': weights_list,
             'sample' : len(self.x_train)
         }
-        print("publicou")
         self.mqtt_client.publish("sd/RoundMsg", json.dumps(learning_results))
 
 
     def modelValidation(self, global_weights):
-        print("Reshaping")
         self.model.set_weights(aux.reshapeWeight(global_weights, self.model.get_weights()))
         accuracy = self.model.evaluate(self.x_test, self.y_test, verbose=0)[1]
 
-        print(f"Local accuracy with global weights: {accuracy}")
+        print(f"Round: {self.round} / Local accuracy with global weights: {accuracy}\n")
 
         self.round += 1
         
@@ -65,6 +64,7 @@ class FedClient():
 
 
     def runClient(self, max_rounds):
+        print("\n----------------------------------------------------------\n")
         self.mqtt_client.on_message = self.on_message
         self.mqtt_client.on_connect = self.on_connect
 

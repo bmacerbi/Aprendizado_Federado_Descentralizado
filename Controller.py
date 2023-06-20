@@ -33,7 +33,6 @@ class FedServer():
         payload = msg.payload.decode("utf-8")
         data = json.loads(payload)
 
-        print(f"Recebe: {topic}")
         if topic == "sd/RoundMsg":
             self.weights_clients_list.append(data['weights'])
             self.sample_size_list.append(data['sample'])
@@ -50,14 +49,14 @@ class FedServer():
         elif topic == "sd/EvaluationMsg":
             self.acc_list.append(data['accuracy'])
 
-            if len(self.acc_list) == self.min_clients:
+            if len(self.acc_list) == self.min_clients - 1:
                 acc_global = sum(self.acc_list)/len(self.acc_list)
-                print(f"Round: {self.round} / Accuracy Mean: {acc_global}")
+                print(f"Round: {self.round} / Accuracy Mean: {acc_global}\n")
 
                 if acc_global >= self.acc_target:
                     print("Accuracy Target has been achieved! Ending process")
-                    self.mqtt_client.publish("sd/FinishMsg")
-                    sys.exit()
+                    self.mqtt_client.publish("sd/FinishMsg", json.dumps({}))
+                    self.round = self.max_rounds
 
                 self.__preperNewRound()        
                 
@@ -81,6 +80,7 @@ class FedServer():
         return aggregated_weights
     
     def startServer(self, clients_list):
+        print("\n----------------------------------------------------------\n")
         self.mqtt_client.on_message = self.on_message
         self.mqtt_client.on_connect = self.on_connect
 
@@ -91,7 +91,7 @@ class FedServer():
             choose_clients_msg = {
                 'chooseIds': choose_clients
             }
-            print("Publica em sd/TrainingMsg")
+            print(f"Round: {self.round} / Call Training")
             self.mqtt_client.publish("sd/TrainingMsg", json.dumps(choose_clients_msg))
 
             while self.move_round == False:
