@@ -1,7 +1,11 @@
+import threading
+from concurrent import futures
+import queue
+import aux
 import time
+import sys
 import json
 import random
-import numpy as np
 
 class FedServer():
     def __init__(self, mqtt_client, n_round_clients, min_clients, max_rounds, acc_target, broker_adress):
@@ -17,7 +21,6 @@ class FedServer():
         self.sample_size_list = []
         self.acc_list = []
         self.move_round = False
-        self.weights_clients_dict = {}
 
 
     def on_connect(self, client, userdata, flags, rc):
@@ -31,37 +34,17 @@ class FedServer():
         data = json.loads(payload)
 
         if topic == "sd/RoundMsg":
-            cid = data['cid']
-            msg_id = data['msgId']
-            self.weights_clients_dict.setdefault(cid, []).append({'weights': data['weights'], 
-                                                                    'sample': data['sample'],
-                                                                        'id': msg_id})
+            self.weights_clients_list.append(data['weights'])
+            self.sample_size_list.append(data['sample'])
 
-            if len(self.weights_clients_dict) == self.n_round_clients:
-                for cid in self.weights_clients_dict:
-                    if len(self.weights_clients_dict[cid]) != 1000:
-                        return
-                    
-                for cid in self.weights_clients_dict:
-                    weights = []
-                    sample = None
-                    for msg in self.weights_clients_dict[cid]:
-                        for number in msg['weights']:
-                            weights.append(number)
-                        sample = msg['sample']
-
-                    self.weights_clients_list.append(weights)
-                    self.sample_size_list.append(sample)
+            if len(self.weights_clients_list) == self.n_round_clients:
                 global_weights = self.__FedAvg()
-                weights_sections = np.array_split(global_weights, 1000)
-                i = 0
-                for weight in weights_sections:
-                    msg = {
-                        'global_weights': weight.tolist(),
-                        'msgId': i
-                    }
-                    self.mqtt_client.publish("sd/AggregationMsg", json.dumps(msg))
-                    i+=1
+
+                ##publica global_weights
+                global_weights_msg = {
+                    'global_weights': global_weights,
+                }   
+                self.mqtt_client.publish("sd/AggregationMsg", json.dumps(global_weights_msg))
 
         elif topic == "sd/EvaluationMsg":
             self.acc_list.append(data['accuracy'])
@@ -83,7 +66,6 @@ class FedServer():
         self.weights_clients_list = []
         self.acc_list = []
         self.move_round = True
-        self.weights_clients_dict = {}
     
     def __FedAvg(self):
         aggregated_weights = []

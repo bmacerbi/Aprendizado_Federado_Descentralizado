@@ -14,8 +14,6 @@ class FedClient():
         self.model = model
         self.broker_adress = broker_adress
         self.mqtt_client = mqtt_client
-
-        self.global_weights_list = []
     
     def on_connect(self, client, userdata, flags, rc):
         print(f"FedClient conectado ao broker MQTT")
@@ -33,16 +31,8 @@ class FedClient():
             if self.cid in choose_clients:
                 self.startLearning()
         elif topic == "sd/AggregationMsg":
-            self.global_weights_list.append(data['global_weights'])
-
-            if len(self.global_weights_list) == 1000:
-                global_weights = []
-                for weights_block in self.global_weights_list:
-                    for weight in weights_block:
-                        global_weights.append(weight)
-                self.modelValidation(global_weights)
-                self.global_weights_list = []
-
+            global_weights = data['global_weights']
+            self.modelValidation(global_weights)
         elif topic == "sd/FinishMsg":
             print("Accuracy target has been achieved!")
             self.round = sys.maxsize
@@ -65,11 +55,12 @@ class FedClient():
 
         print(f"Round: {self.round} / Local accuracy with global weights: {accuracy}\n")
 
+        self.round += 1
+        
         accuracy_msg = {
             'accuracy': accuracy,
         }
         self.mqtt_client.publish("sd/EvaluationMsg", json.dumps(accuracy_msg))
-        self.round += 1
 
 
     def runClient(self, max_rounds):
