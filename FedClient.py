@@ -16,7 +16,7 @@ class FedClient():
         self.mqtt_client = mqtt_client
     
     def on_connect(self, client, userdata, flags, rc):
-        print(f"FedClient conectado ao broker MQTT")
+        print(f"FedClient conected with MQTT broker")
         self.mqtt_client.subscribe("sd/TrainingMsg")
         self.mqtt_client.subscribe("sd/AggregationMsg")
         self.mqtt_client.subscribe("sd/FinishMsg")

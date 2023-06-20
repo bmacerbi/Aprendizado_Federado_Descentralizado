@@ -23,7 +23,7 @@ class Client():
         self.broker_adress = broker_adress
 
     def on_connect(self, client, userdata, flags, rc):
-        print(f"Client {self.id} conectado ao broker MQTT")
+        print(f"Client {self.id} conected with MQTT broker")
         self.mqtt_client.subscribe("sd/init")
         self.mqtt_client.subscribe("sd/voting")
     

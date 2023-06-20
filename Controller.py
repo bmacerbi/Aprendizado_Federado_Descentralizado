@@ -24,7 +24,7 @@ class FedServer():
 
 
     def on_connect(self, client, userdata, flags, rc):
-        print(f"Controller conectado ao broker MQTT")
+        print(f"Controller conected with MQTT broker")
         self.mqtt_client.subscribe("sd/RoundMsg")
         self.mqtt_client.subscribe("sd/EvaluationMsg")
 
@@ -85,7 +85,7 @@ class FedServer():
         self.mqtt_client.on_connect = self.on_connect
 
         self.mqtt_client.connect(self.broker_adress)
-        time.sleep(3)
+        time.sleep(5)
         while self.round < self.max_rounds:
             choose_clients = random.sample(clients_list, self.n_round_clients)
             choose_clients_msg = {
