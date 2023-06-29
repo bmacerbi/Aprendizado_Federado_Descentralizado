@@ -39,37 +39,25 @@ class Client():
                 self.__vote()
 
         elif topic == "sd/voting":
-            self.vote_table[client_id] = data['VoteID']
+            self.vote_table[client_id] = data['Vote']
 
             if self.min_clients == len(self.vote_table):
                 self.__countVote()
 
     def __vote(self):
-        vote = random.randint(0, len(self.clients_list)-1)
         vote_msg = {
             'ClientID': self.id,
-            'VoteID': self.clients_list[vote]
+            'Vote': random.randint(0, 65335)
         }
         self.mqtt_client.publish("sd/voting", json.dumps(vote_msg))
 
     def __countVote(self):
-        vote_counter = {}
-
-        for client_id in self.vote_table:
-            if self.vote_table[client_id] not in vote_counter:
-                vote_counter[self.vote_table[client_id]] = 1
-            else:
-                vote_counter[self.vote_table[client_id]] += 1
-
-        winner_votes = -1
+        winner_vote = -1
         winner_id = -1
-        for client in vote_counter:
-            if vote_counter[client] > winner_votes:
-                winner_votes = vote_counter[client]
+        for client in self.vote_table:
+            if self.vote_table[client] > winner_vote:
                 winner_id = client
-            elif vote_counter[client] == winner_votes:
-                if client > winner_id:
-                    winner_id = client
+                winner_vote = self.vote_table[client]
 
         self.controller_id = winner_id
         print(f"Tabela de votos do client {self.id}: {self.vote_table} // Vencedor: {self.controller_id}")
