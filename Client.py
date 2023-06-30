@@ -60,7 +60,7 @@ class Client():
                 winner_vote = self.vote_table[client]
 
         self.controller_id = winner_id
-        print(f"Tabela de votos do client {self.id}: {self.vote_table} // Vencedor: {self.controller_id}")
+        print(f"Vote table for client {self.id}: {self.vote_table} // Winner: {self.controller_id}")
 
     def runClient(self, n_round_clients, max_rounds, acc_target):
         self.mqtt_client.on_message = self.on_message
