@@ -11,7 +11,7 @@ Para realizar a instalação, o primeiro passo é clonar o repositório para um 
 $ pip3 install -r requirements.txt
 ```
 
-Como cada cliente roda em um processo distinto, é necessário dividir previamente a base de dados. Para isso, ao executar o programa *getSplitData*, são criadas pastas com dados para cada cliente. Dessa forma, cada cliente utilizará uma parte dos dados da base Mnist para realizar o treinamento. O repositório contém os dados separados para 36clientes, então caso haja necessidade de usar uma quantidade diferente de clientes, deve ser executado o seguinte comando (10 clientes neste exemplo):
+Como cada cliente roda em um processo distinto, é necessário dividir previamente a base de dados. Para isso, ao executar o programa *getSplitData*, são criadas pastas com dados para cada cliente. Dessa forma, cada cliente utilizará uma parte dos dados da base Mnist para realizar o treinamento. O repositório contém os dados separados para 5 clientes, então caso haja necessidade de usar uma quantidade diferente de clientes, deve ser executado o seguinte comando (10 clientes neste exemplo):
 
 ```
 $ python3 getSplitData.py 10
@@ -37,6 +37,9 @@ Vale destacar que devemos obedecer a estrutura de diretórios criados em /mnist_
 ```
 $ python3 Client.py 4 5 5 1.0 0
 ```
+
+Outro ponto a destacar é que o clientes devem ser inicializados ao mesmo tempo para o sistemas não ficar descoordenado.
+
 ---
 ## **Link para o vídeo no Youtube**
 
@@ -49,7 +52,7 @@ Para apresentarmos a nossa aplicação iremos passar por cada arquivo desenvolvi
 
 ### **Client.py**
 
-Define a classe Client, responsável pela escolha do cliente controlador e dos clientes de aprendizado. Cada client possui algumas variáveis importantes, como seu **ID** (um inteiro de [0, 65335]), uma lista de clientes conectados, a tabela de votos, o **ID** do controlador, etc.
+Define a classe Client, responsável pela escolha do cliente controlador e dos clientes de aprendizado. Cada client possui algumas variáveis importantes, como seu **ID**, uma lista de clientes conectados, a tabela de votos, o **ID** do controlador, etc.
 
 Os métodos **_on_connect_** e **_on_message_** são chamados quando o cliente se conecta ao broker **MQTT** e quando recebe uma mensagem, respectivamente. Ao se conectar, um cliente se inscreve nos tópicos **"sd/init"** e **"sd/voting"**. Ao receber uma mensagem, caso seja do tópico **init**, o cliente atualiza a lista de clientes conectados, e caso o mínimo de clientes já estejam conectados, a votação é iniciada. Caso a mensagem recebida seja do tópico **voting**, o cliente atualiza sua tabela de votos com o voto recebido.
 
@@ -61,11 +64,11 @@ Um cliente é inicializado a partir de **runClient**, onde se conecta ao broker,
 
 ### **Controller.py**
 
-O controlador é responsável por coordenar o treinamento federado. Ele inicia se conectando ao broker MQTT e se inscrevendo nos tópicos **sd/RoundMsg** e **sd/EvaluationMsg**. Para cada rodada de treinamento, o controlador seleciona aleatoriamente quais clientes irão participar do treinamento e então publica esse resultado no tópico *TrainingMsg*.
+O controlador é responsável por coordenar o treinamento federado. Ele inicia se conectando ao broker MQTT e se inscrevendo nos tópicos **sd/RoundMsg** e **sd/EvaluationMsg**. Para cada rodada de treinamento, o controlador seleciona aleatoriamente quais clientes irão participar do treinamento e então publica esse resultado no tópico **sd/TrainingMsg**.
 
-Ao receber uma mensagem do tópico *sd/RoundMsg*, o controlador realiza a agregação dos pesos locais dos modelos construídos pelos clientes. Os pesos globais são então publicados no tópico *AggregationMsg*.
+Ao receber uma mensagem do tópico **sd/RoundMsg**, o controlador realiza a agregação dos pesos locais dos modelos construídos pelos clientes. Os pesos globais são então publicados no tópico **sd/AggregationMsg**.
 
-Ao receber uma mensagem do tópico *sd/EvaluationMsg*, o controlador obtém as acurácias locais de cada cliente e faz uma média global. Por fim, se a meta de acurácia foi atingida, ele publica uma mensagem no tópico *FinishMsg* para encerrar o treinamento. Caso contrário, prepara uma nova rodada de treinamento, repetindo todo o processo.
+Ao receber uma mensagem do tópico **sd/EvaluationMsg**, o controlador obtém as acurácias locais de cada cliente e faz uma média global. Por fim, se a meta de acurácia foi atingida, ele publica uma mensagem no tópico *FinishMsg* para encerrar o treinamento. Caso contrário, prepara uma nova rodada de treinamento, repetindo todo o processo.
 
 ### **FedClient.py**
 
@@ -73,11 +76,11 @@ O cliente de aprendizado federado inicia obtendo os dados de treinamento especí
 
 Após carregar os dados de treinamento, o cliente chama a função runClient, conectando-se ao broker MQTT e se inscrevendo nos tópicos **sd/TrainingMsg**, **sd/AggregationMsg** e **sd/FinishMsg**.
 
-Ao receber uma mensagem do tópico *TrainingMsg*, o cliente irá iniciar uma rodada de treinamento caso tenha sido escolhido para aquele round, e publicar no tópico **sd/RoundMsg** os pesos locais do modelo construído.
+Ao receber uma mensagem do tópico **sd/TrainingMsg**, o cliente irá iniciar uma rodada de treinamento caso tenha sido escolhido para aquele round, e publicar no tópico **sd/RoundMsg** os pesos locais do modelo construído.
 
-Ao receber uma mensagem do tópico *AggregationMsg*, o cliente atualiza os pesos do modelo local com os pesos e realiza uma avaliação, publicando no tópico **sd/EvaluationMsg** a acurácia obtida.
+Ao receber uma mensagem do tópico **sd/AggregationMsg**, o cliente atualiza os pesos do modelo local com os pesos e realiza uma validação, publicando no tópico **sd/EvaluationMsg** a acurácia obtida.
 
-Por fim, uma mensagem do tópico *FinishMsg* significa que a meta de acurácia foi atingida, encerrando então o cliente.
+Por fim, uma mensagem do tópico **sd/FinishMsg** significa que a meta de acurácia foi atingida, encerrando então o cliente.
 
 ## **Testes e Resultados**
 
@@ -85,9 +88,9 @@ Para analisar os resultados, a aplicação foi testada de três formas: Centrali
 
 > ![Imagem 1](images/acc_plot.png)
 
-Analisando o gráfico, é possível perceber que as duas abordagens federadas tem resultados similares, com uma estabilidade superior no caso de 4 clientes por round.
+Analisando o gráfico, é possível perceber que as duas abordagens federadas tem resultados similares e positivos, ambas convergiram seus modelos com uma acurácia final de aproxidamente 98% e, naturalmente, mantiveram seus resultados a baixo da abordagem centralizada. 
 
-Tal resultado não condiz com o esperado em uma aplicação real, uma vez que o ideal seria o teste com um cliente por round performar de forma inferior, porém podemos explicar esse fenômeno da seguinte forma: como a base de dados foi dividida de forma homogênea para os clientes, isso implica que não há uma disparidade significativa entre os datasets de cada cliente, dessa forma um modelo global que foi construído a partir dos pesos de um cliente específico irá performar relativamente bem em outros clientes, visto que os dados não possuem fortes particularidades.
+Algo a se relatar é que o modelo construido a partir de 1 cliente sendo treinado a cada round apresentou uma instabilidade maior ao longo dos rounds, tal fenômeno pode ser explicado a partir das possíveis particularidades que uma base de dados de um cliente em específico pode apresentar, dessa forma o modelo construido a partir dela pode apresentar particularidades que não são vistas nos outros clientes.
 
 ## **Conclusão**
 
