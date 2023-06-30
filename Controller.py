@@ -8,14 +8,14 @@ import json
 import random
 
 class FedServer():
-    def __init__(self, mqtt_client, n_round_clients, min_clients, max_rounds, acc_target, broker_adress):
+    def __init__(self, mqtt_client, n_round_clients, min_clients, max_rounds, acc_target, broker_address):
         self.mqtt_client = mqtt_client
         self.round = 0
         self.n_round_clients = n_round_clients
         self.min_clients = min_clients
         self.max_rounds = max_rounds
         self.acc_target = acc_target
-        self.broker_adress = broker_adress
+        self.broker_address = broker_address
 
         self.weights_clients_list = []
         self.sample_size_list = []
@@ -24,7 +24,7 @@ class FedServer():
 
 
     def on_connect(self, client, userdata, flags, rc):
-        print(f"Controller conected with MQTT broker")
+        print(f"Controller connected with MQTT broker")
         self.mqtt_client.subscribe("sd/RoundMsg")
         self.mqtt_client.subscribe("sd/EvaluationMsg")
 
@@ -58,9 +58,9 @@ class FedServer():
                     self.mqtt_client.publish("sd/FinishMsg", json.dumps({}))
                     self.round = self.max_rounds
 
-                self.__preperNewRound()        
+                self.__prepareNewRound()        
                 
-    def __preperNewRound(self):
+    def __prepareNewRound(self):
         self.round += 1
         self.sample_size_list = []
         self.weights_clients_list = []
@@ -84,7 +84,7 @@ class FedServer():
         self.mqtt_client.on_message = self.on_message
         self.mqtt_client.on_connect = self.on_connect
 
-        self.mqtt_client.connect(self.broker_adress)
+        self.mqtt_client.connect(self.broker_address)
         time.sleep(5)
         while self.round < self.max_rounds:
             choose_clients = random.sample(clients_list, self.n_round_clients)

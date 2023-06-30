@@ -10,7 +10,7 @@ import sys
 import aux
 
 class Client():
-    def __init__(self, id, broker_adress, min_clients):
+    def __init__(self, id, broker_address, min_clients):
         self.id = id
         self.min_clients = min_clients
         self.clients_list = []
@@ -20,7 +20,7 @@ class Client():
         self.controller_id = -1 
         
         self.mqtt_client = mqtt.Client(str(self.id))
-        self.broker_adress = broker_adress
+        self.broker_address = broker_address
 
     def on_connect(self, client, userdata, flags, rc):
         print(f"Client {self.id} conected with MQTT broker")
@@ -78,7 +78,7 @@ class Client():
         self.mqtt_client.on_message = self.on_message
         self.mqtt_client.on_connect = self.on_connect
 
-        self.mqtt_client.connect(self.broker_adress)
+        self.mqtt_client.connect(self.broker_address)
         self.mqtt_client.loop_start()
 
         #esperando para que todos assinem as funções
@@ -97,7 +97,7 @@ class Client():
     def startController(self, n_round_clients, max_rounds, acc_target):
         fed_server = FedServer(self.mqtt_client, n_round_clients, 
                                     self.min_clients, max_rounds, acc_target, 
-                                        self.broker_adress)
+                                        self.broker_address)
         self.clients_list.remove(self.id)
         fed_server.startServer(self.clients_list)
 
@@ -116,7 +116,7 @@ class Client():
         model = aux.define_model(input_shape,num_classes)
 
         fed_client = FedClient(self.id, x_train, x_test, 
-                                y_train, y_test, model, self.broker_adress, 
+                                y_train, y_test, model, self.broker_address, 
                                     self.mqtt_client)
         fed_client.runClient(max_rounds)
 
@@ -132,7 +132,7 @@ if __name__ == "__main__":
         print("Missing argument! You need to pass: n_round_clients/min_clients/max_rounds/acc_target/clientId")
         exit()
 
-    broker_adress = "localhost"
-    client = Client(id= id, broker_adress=broker_adress, min_clients=min_clients)
+    broker_address = "localhost"
+    client = Client(id= id, broker_address=broker_address, min_clients=min_clients)
     client.runClient(n_round_clients,max_rounds,acc_target)
 
