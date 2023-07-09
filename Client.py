@@ -33,16 +33,20 @@ class Client():
         data = json.loads(payload)
         client_id = data['ClientID']
 
-        if topic == "sd/init" and client_id != self.id:
+        if topic == "sd/init" and client_id != self.id and self.__new_cid(client_id):
             self.clients_list.append(int(data['ClientID']))
-            if self.min_clients == len(self.clients_list):
-                self.__vote()
 
         elif topic == "sd/voting":
             self.vote_table[client_id] = data['Vote']
 
             if self.min_clients == len(self.vote_table):
                 self.__countVote()
+
+    def __new_cid(self, cid):
+        for know_cid in self.clients_list:
+            if cid == know_cid:
+                return False
+        return True
 
     def __vote(self):
         vote_msg = {
@@ -70,8 +74,14 @@ class Client():
         self.mqtt_client.loop_start()
 
         #esperando para que todos assinem as funções
-        time.sleep(5)
-        self.mqtt_client.publish("sd/init", json.dumps({"ClientID": self.id}))
+        while True:
+            time.sleep(1)
+            self.mqtt_client.publish("sd/init", json.dumps({"ClientID": self.id}))
+
+            if self.min_clients == len(self.clients_list):
+                break
+        
+        self.__vote()
 
         #esperando resultado da eleição
         while self.controller_id == -1:
